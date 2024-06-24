@@ -1,7 +1,9 @@
-## URL for webpage/shiny app
+# Global CO2 Emission Dashboard
+A project completed for class "Introduction to Data Science" at Carleton College. Dashboard offers an interface to track CO2 emissions from around the world.
+**URL for webpage/shiny app**
 https://ellairene.shinyapps.io/FinalProjectDirectory/
 
-## URL to screencast (if not embedded in webpage):
+**URL to screencast (if not embedded in webpage)**
 https://carleton.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=1b3cc980-dc4a-4c4b-a1a8-af5400652027
 
 ## List of files in the repository
