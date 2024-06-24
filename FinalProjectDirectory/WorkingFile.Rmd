@@ -1,0 +1,190 @@
+---
+title: "Final Project"
+author: "Ella Hein & Steve Antrim"
+date: "`r format(Sys.Date(), ' %B %d %Y')`"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, collapse = TRUE, 
+                      warning = FALSE, message = FALSE)
+# add packages here 
+library(readr)
+library(lubridate)
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(ggiraph)
+library(stringr)
+library(polite)
+library(rvest)
+library(tidyr)
+library(tidymodels)
+library(stringr)
+library(rlang)
+library(data.table)
+library(shiny)
+library(shinythemes)
+library(probably)
+library(maps)
+library(maptools)
+library(sp)
+library(leaflet)
+library(tidyverse)
+library(rgeos)
+library(stringr)
+library(rlang)
+library(data.table)
+library(ggiraph)
+#libraries for assignment
+```
+
+```{r}
+# Load CO2 data
+owid_co2_data <- read_csv("FinalProjectDirectory/owid-co2-data.csv")
+#View(owid_co2_data)
+# Load in second data set
+countryGDPperCapita <- read_csv("FinalProjectDirectory/countryGDPperCapita.csv")
+#View(countryGDPperCapita)
+# Load in third data set
+world_population <- read_csv("FinalProjectDirectory/world_population.csv")
+#View(world_population)
+```
+
+```{r}
+# years in countryGDPPercapita: 1990, 1995, 2000, 2005, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018
+Mgmt <- c(1990,1995,2000, 2005, 2010, 2015)
+co2NewData <- filter(owid_co2_data, is.element(year, Mgmt))
+
+WorldPopNew <- world_population %>%
+  mutate(`2022 Population` = NULL, `1970 Population` = NULL, `1980 Population` = NULL, `2020 Population` = NULL)
+
+GDPperCap <- countryGDPperCapita %>%
+  mutate(`2011` = NULL, `2012` = NULL, `2013` = NULL, `2014` = NULL, `2016` = NULL, `2017` = NULL, `2018` = NULL)
+```
+
+```{r}
+library(DataEditR)
+#data_edit(WorldPopNew)
+# used the above library package to perform mass edits on our data sets. Needs to be commented out to allow for knitting after the changes are made. I first merged our initial two data sets, GDP with co2NewData, by changing the rows to columns in GDP. This allowed for us to see the 6 ideal years of GDP values along with our co2 data. I was then able to see which countries were included in our co2NewData but did not have GDP values and was able to delete those from our data set as they were unnecessary.
+```
+
+```{r}
+co2CleanDataV1 <- read_csv("FinalProjectDirectory/co2CleanDataV1.csv")
+# This was loading in the initial data set from the DataEditr package after the above changes. 
+```
+
+```{r}
+GDP_p_c_Clean <- co2CleanDataV1 %>%
+  select(country, year, gdp_p_cap)
+which(is.na(GDP_p_c_Clean))
+# finds the count of missing values 
+sum(is.na(GDP_p_c_Clean))
+# This is specifically looking at the number of NAs in the GDP columns in order to determine what parts are missing. There was some lack of detail with this data set, so I found another one to fix it with in order to fill the 41 NA values that were present. Since the only data sets I could find were sets that included every country in the world this ran into a slight issue with the cleaning we had already done as this fourth set was extremely messy. Due to this, I just used the dataEditR package again in order to manually input the 41 values as that was more efficient than cleaning the new set.
+```
+
+```{r}
+#data_edit(co2CleanDataV1)
+co2CleanDataFinal <- read_csv("FinalProjectDirectory/co2CleanDataFinal.csv")
+GDP_p_c_Clean_Test <- co2CleanDataFinal %>%
+  select(country, year, gdp_p_cap)
+which(is.na(GDP_p_c_Clean_Test))
+# finds the count of missing values 
+sum(is.na(GDP_p_c_Clean_Test))
+# After Test there are no NA values in the GDP per Capita column which is what we are looking for. This has now been fully cleaned.
+```
+
+```{r}
+# Coxcomb Plot
+
+#Formatting data
+coxcolmbData <- owid_co2_data %>%
+  select(cumulative_cement_co2, 
+         cumulative_coal_co2,
+         cumulative_flaring_co2,
+         cumulative_gas_co2,
+         cumulative_oil_co2, 
+         cumulative_other_co2,
+         year, country, co2_per_capita, co2) %>%
+  filter(year==2015) %>%
+  arrange(desc(co2)) %>%
+  filter(!country %in% c( "Asia", "North America", "South America", "Australia", "Europe", "Africa", "World", "Upper-middle-income-countries", "High-income-countries", "European Union (28)", "European Union (27)", "Europe (excl. EU-27)", "Europe (excl. EU-28)", "North America (excl. USA)", "International transport", "Oceania", "Upper-middle-income countries", "High-income countries", "Asia (excl. China & India)", "Lower-middle-income countries", "Low-income countries"))%>%
+  top_n(40, co2) %>%
+  pivot_longer(names_to = "source",
+               values_to = "emissions",
+               cols = cumulative_cement_co2:cumulative_other_co2)
+
+#Coxcolmb plot
+ggplot(coxcolmbData, aes(fill=source, y=co2, x=country)) + 
+    geom_bar(position="stack", stat="identity") + 
+  coord_polar() + 
+  scale_y_continuous(trans = "log10") +
+  aes(x=reorder(country, co2)) +
+    theme(axis.text.x = element_text(angle=-20))+
+  theme_light()
+
+# Need to add interactivity including mouse-over feature to show country names and emissions values
+
+```
+
+```{r}
+# Timescale of emissions over the years as well as gdp over the years
+# Need to make interactive so that user can input 
+
+# Data Processing
+timeSeriesData <- owid_co2_data %>%
+  select(year, country, co2_per_capita, co2) %>%
+  filter(!country %in% c( "Asia", "North America", "South America", "Australia", "Europe", "Africa", "World", "Upper-middle-income-countries", "High-income-countries", "European Union (28)", "European Union (27)", "Europe (excl. EU-27)", "Europe (excl. EU-28)", "North America (excl. USA)", "International transport", "Oceania", "Upper-middle-income countries", "High-income countries", "Asia (excl. China & India)", "Lower-middle-income countries", "Low-income countries")) %>%
+  filter(co2 > 1000) #make input
+
+# Plot  
+ggplot(data=timeSeriesData, 
+       aes(x=year, y=co2, group = country,
+                                            colour = country)) + 
+  geom_line() +
+  labs(y= "CO2 emissions", x = "Year") + 
+  ggtitle("CO2 emissions over the years")+
+  geom_point() +
+  theme_light()
+```
+
+
+```{r}
+# Gdp vs co2/capita chart
+# Add low, medium, and high quartiles
+#classification to decide how much country emits based on pop and gdp/capita? 
+
+justCo2Data<- co2CleanDataFinal %>%
+  select(country, population, gdp, co2) %>%
+  mutate(emission_rate = case_when(co2 <= 9.376  ~ 'low', co2 >= 1000 ~ 'high'))
+
+justCo2Data$emission_rate <- justCo2Data$emission_rate %>% replace_na('medium')
+
+# Organize
+mldata <- as_tibble(justCo2Data, rownames = "emission_rate") %>% drop_na() %>%
+  column_to_rownames("emission_rate") %>%
+  select(population, gdp)
+
+# Standardize
+standardize <- function(x, na.rm = FALSE) {
+  (x - mean(x, na.rm = na.rm)) / sd(x, na.rm = na.rm)
+}
+mldata <- mldata %>% mutate(across(where(is.numeric), standardize))
+
+#ML
+set.seed(1234)
+k.means <- kmeans(mldata, centers = 3, nstart = 25)
+k.means %>% tidy()
+glance(k.means)
+
+library(broom)
+knitr::kable(augment(k.means, data = mldata))
+
+library(factoextra)
+fviz_cluster(kmeans(mldata, centers = 3, nstart = 25), labelsize = 8, data = mldata, ggtheme = theme_light())
+
+
+```
